@@ -2,7 +2,7 @@
 
 <div align="center">
   <h3>A Sharia-Compliant Ecommerce Platform Backend</h3>
-  <p>Built with Node.js, Express, MongoDB & JWT Authentication</p>
+  <p>Built with Node.js, Express, MySQL & Sequelize ORM</p>
 
   <p>
     <strong>Base URL:</strong> <code>http://localhost:5000/api</code>
@@ -20,7 +20,6 @@
 - [Role System](#-role-system)
 - [API Reference](#-api-reference)
 - [Error Handling](#-error-handling)
-- [Postman Collection](#-postman-collection)
 - [Database Models Overview](#-database-models-overview)
 
 ---
@@ -29,8 +28,8 @@
 
 ### Prerequisites
 
-- **Node.js** v16+
-- **MongoDB** v5+ (running locally or via Atlas)
+- **Node.js** v18+
+- **MySQL** v8+ (running locally or on VPS)
 - **npm** or **yarn**
 
 ### Installation
@@ -44,335 +43,198 @@ cd hayaa-ecommerce-backend-node
 npm install
 
 # 3. Configure environment
-# Edit .env file (already created with defaults):
-#   PORT=5000
-#   MONGO_URI=mongodb://localhost:27017/hayaa_ecommerce
-#   JWT_SECRET=your_secret_here
-#   JWT_EXPIRE=7d
+cp .env.example .env
+# Edit .env file with your MySQL credentials
 
-# 4. Start the server
-npm run dev    # Development (with auto-restart)
+# 4. Create the database (MySQL must be running)
+# The app can auto-create it, or do it manually:
+# mysql -u root -p -e "CREATE DATABASE hayaa_ecommerce CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 5. Run migrations to create all tables
+npm run migrate
+
+# 6. Start the server
+npm run dev    # Development (with auto-restart via nodemon)
 # OR
 npm start      # Production
 ```
 
 The server will start at `http://localhost:5000`.
 
+### Quick Test
+
+```bash
+# Health check
+curl http://localhost:5000/api/health
+
+# Register a user
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","email":"test@example.com","password":"password123","phone":"08012345678"}'
+```
+
 ---
 
-## �️ MongoDB Setup Guide
-
-This guide covers installing and configuring MongoDB both **locally on Windows** and on a **Linux VPS**.
-
----
+## 🗄️ MySQL Setup Guide
 
 ### 💻 Local Setup (Windows)
 
-#### Option 1: Install MongoDB Community Edition (Recommended)
+#### Option 1: Install MySQL Installer (Recommended)
 
 ```bash
-# Step 1: Download MongoDB
-# Go to: https://www.mongodb.com/try/download/community
-# Download the MSI installer for Windows
+# 1. Download MySQL Installer from:
+#    https://dev.mysql.com/downloads/installer/
 
-# Step 2: Install MongoDB
-# Run the installer, choose "Complete" setup
-# Make sure to install "MongoDB Compass" (GUI tool) as well
+# 2. Run the installer, choose "Developer Default"
 
-# Step 3: MongoDB runs as a Windows service automatically
-# After installation, MongoDB starts on every boot
-# Default connection: mongodb://localhost:27017
+# 3. During setup:
+#    - Set root password (save it!)
+#    - MySQL runs as a Windows service automatically
+#    - Default port: 3306
+
+# 4. Verify installation:
+mysql --version
 ```
 
-**Verify installation:**
+#### Option 2: Use XAMPP (Easiest for Beginners)
 
 ```bash
-# Open Command Prompt or PowerShell
-mongo --version
-# OR (newer versions)
-mongod --version
+# 1. Download XAMPP from: https://www.apachefriends.org/
 
-# Check if MongoDB service is running
-net start MongoDB
+# 2. Install and open XAMPP Control Panel
+
+# 3. Click "Start" on MySQL
+
+# 4. MySQL runs on port 3306 with default user: root, no password
 ```
-
-#### Option 2: Use MongoDB Atlas (Cloud - No Installation)
-
-MongoDB Atlas is a free cloud-hosted MongoDB service. Perfect if you don't want to install anything locally.
-
-```bash
-# Step 1: Create a free account
-# Go to: https://www.mongodb.com/atlas
-
-# Step 2: Create a cluster
-# - Click "Build a Database"
-# - Choose the FREE M0 cluster (512MB storage - plenty for development)
-# - Choose a cloud provider (AWS) and region (choose one close to you)
-
-# Step 3: Set up security
-# - In "Database Access", create a database user (username + password)
-# - In "Network Access", add your IP address or 0.0.0.0/0 (allows all IPs)
-
-# Step 4: Get your connection string
-# - Click "Connect" → "Connect your application"
-# - Copy the connection string, it looks like:
-#   mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/
-```
-
-**Update your `.env` file:**
-
-```env
-# For local MongoDB:
-MONGO_URI=mongodb://localhost:27017/hayaa_ecommerce
-
-# For MongoDB Atlas (cloud):
-MONGO_URI=mongodb+srv://your_username:your_password@cluster0.xxxxx.mongodb.net/hayaa_ecommerce?retryWrites=true&w=majority
-```
-
-#### 📊 Using MongoDB Compass (GUI)
-
-MongoDB Compass is a visual tool that comes with the MongoDB installer:
-
-```bash
-# 1. Open MongoDB Compass
-# 2. Paste your connection string:
-#    mongodb://localhost:27017
-# 3. Click "Connect"
-# 4. You'll see the `hayaa_ecommerce` database once your server runs!
-```
-
----
 
 ### 🐧 Linux VPS Setup (Ubuntu/Debian)
 
 ```bash
-# ============================================
-# STEP 1: SSH into your VPS
-# ============================================
+# SSH into your VPS
 ssh your_user@your_vps_ip
 
-# ============================================
-# STEP 2: Import MongoDB GPG Key & Add Repository
-# ============================================
+# Install MySQL
+sudo apt update
+sudo apt install mysql-server -y
 
-# Import the public key
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
-   sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg \
-   --dearmor
+# Secure MySQL
+sudo mysql_secure_installation
 
-# Add MongoDB repository (Ubuntu 22.04 / 24.04)
-echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] http://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
-  sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-
-# ============================================
-# STEP 3: Install MongoDB
-# ============================================
-sudo apt-get update
-sudo apt-get install -y mongodb-org
-
-# ============================================
-# STEP 4: Start MongoDB
-# ============================================
-sudo systemctl start mongod
-sudo systemctl enable mongod   # Auto-start on boot
-sudo systemctl status mongod   # Check if running
-
-# ============================================
-# STEP 5: Verify Installation
-# ============================================
-mongosh --eval "db.version()"  # Should print version number
-
-# ============================================
-# STEP 6: SECURE MongoDB (CRITICAL for VPS!)
-# ============================================
-
-# 6a. Create an admin user
-mongosh
+# Check status
+sudo systemctl status mysql
 ```
+
+### Creating the Database & User
+
+```sql
+-- Connect to MySQL
+sudo mysql
+
+-- Create database
+CREATE DATABASE hayaa_ecommerce
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+-- Create user (change password!)
+CREATE USER 'hayaa_user'@'localhost' IDENTIFIED BY 'your_strong_password';
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON hayaa_ecommerce.* TO 'hayaa_user'@'localhost';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+
+-- Exit
+EXIT;
+```
+
+### Your `.env` file should look like:
+
+```env
+PORT=5000
+NODE_ENV=development
+
+# For local XAMPP (no password):
+# DB_HOST=localhost
+# DB_PORT=3306
+# DB_NAME=hayaa_ecommerce
+# DB_USER=root
+# DB_PASSWORD=
+
+# For MySQL with password:
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=hayaa_ecommerce
+DB_USER=hayaa_user
+DB_PASSWORD=your_strong_password
+
+# JWT
+JWT_SECRET=hayaa_super_secret_jwt_key_2026
+JWT_EXPIRE=7d
+```
+
+---
+
+## 📋 Migration System (Like Laravel's Artisan Migrate)
+
+This project uses **Sequelize CLI** for database migrations - similar to Laravel's `php artisan migrate`.
+
+### Available Commands
+
+| Command                          | Purpose                     | Laravel Equivalent             |
+| -------------------------------- | --------------------------- | ------------------------------ |
+| `npm run migrate`                | Run all pending migrations  | `php artisan migrate`          |
+| `npm run migrate:undo`           | Undo the last migration     | `php artisan migrate:rollback` |
+| `npm run migrate:undo:all`       | Undo all migrations         | `php artisan migrate:reset`    |
+| `npm run migrate:create -- name` | Create a new migration file | `php artisan make:migration`   |
+| `npm run seed:all`               | Run database seeders        | `php artisan db:seed`          |
+| `npm run seed:create -- name`    | Create a seeder file        | `php artisan make:seeder`      |
+
+### Example: Adding a New Column
+
+**1. Create a migration:**
+
+```bash
+npm run migrate:create -- add_loyalty_points_to_users
+```
+
+**2. Edit the generated file in `migrations/`:**
 
 ```javascript
-// Inside mongosh shell:
-use admin
-db.createUser({
-  user: "admin",
-  pwd: "YourStrongPassword123!",
-  roles: [{ role: "root", db: "admin" }]
-})
-exit
+// migrations/20260613123456-add_loyalty_points_to_users.js
+"use strict";
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.addColumn("Users", "loyaltyPoints", {
+      type: Sequelize.INTEGER,
+      defaultValue: 0,
+    });
+  },
+  async down(queryInterface, Sequelize) {
+    await queryInterface.removeColumn("Users", "loyaltyPoints");
+  },
+};
 ```
+
+**3. Run the migration:**
 
 ```bash
-# 6b. Enable authentication in MongoDB config
-sudo nano /etc/mongod.conf
+npm run migrate
 ```
 
-```yaml
-# In the mongod.conf file, find the #security: section
-# Change it to look like this:
-security:
-  authorization: enabled
-```
+**4. Update the model** in `models/User.js`:
 
-```bash
-# 6c. Also bind to your server's IP (or keep local only + use SSH tunnel)
-# In /etc/mongod.conf, under net: section:
-net:
-  port: 27017
-  bindIp: 127.0.0.1   # Local only - MOST SECURE
-
-# 6d. Restart MongoDB
-sudo systemctl restart mongod
-
-# 6e. Test authentication
-mongosh -u admin -p YourStrongPassword123! --authenticationDatabase admin
-```
-
-#### 🔐 Connecting from Your App to VPS MongoDB
-
-**Option A: Local-only MongoDB + Local App (Simplest & Most Secure)**
-
-```bash
-# Run the app ON the same VPS
-# Your .env stays as:
-MONGO_URI=mongodb://localhost:27017/hayaa_ecommerce
-```
-
-**Option B: Remote MongoDB with SSH Tunnel (Recommended for Remote Access)**
-
-```bash
-# On your LOCAL machine, create an SSH tunnel:
-ssh -L 27017:localhost:27017 your_user@your_vps_ip
-
-# Keep this terminal open! The tunnel forwards:
-# localhost:27017 (your PC) → VPS:27017 (MongoDB)
-
-# Your .env stays the same:
-MONGO_URI=mongodb://localhost:27017/hayaa_ecommerce
-```
-
-**Option C: Direct Remote Connection (Use with Authentication Only!)**
-
-```bash
-# Only do this if you REALLY need remote access
-# MongoDB .env with credentials:
-MONGO_URI=mongodb://admin:YourStrongPassword123!@your_vps_ip:27017/hayaa_ecommerce?authSource=admin
+```javascript
+loyaltyPoints: {
+  type: DataTypes.INTEGER,
+  defaultValue: 0
+}
 ```
 
 ---
 
-### 🛡️ MongoDB Security Checklist for VPS
-
-| Security Measure         | Command                               | Why                          |
-| ------------------------ | ------------------------------------- | ---------------------------- |
-| ✅ Enable Authentication | `authorization: enabled` in config    | Prevents unauthorized access |
-| ✅ Bind to localhost     | `bindIp: 127.0.0.1`                   | Blocks external connections  |
-| ✅ Use SSH tunnel        | `ssh -L 27017:localhost:27017 ...`    | Encrypted connection         |
-| ✅ Strong password       | Use 16+ chars with special chars      | Prevents brute force         |
-| ✅ Firewall rule         | `sudo ufw allow ssh` only             | Blocks all except SSH        |
-| ✅ Regular backups       | `mongodump` weekly                    | Data recovery                |
-| ✅ Update regularly      | `sudo apt update && sudo apt upgrade` | Security patches             |
-
-```bash
-# Set up UFW firewall (if not already):
-sudo ufw allow ssh
-sudo ufw allow 5000       # If your API is public
-sudo ufw enable
-sudo ufw status
-```
-
----
-
-### 🔄 Common MongoDB Commands
-
-```bash
-# Check service status
-sudo systemctl status mongod
-
-# Start/Stop/Restart
-sudo systemctl start mongod
-sudo systemctl stop mongod
-sudo systemctl restart mongod
-
-# View logs
-sudo journalctl -u mongod -n 50
-# OR
-sudo cat /var/log/mongodb/mongod.log
-
-# Backup database
-mongodump --db hayaa_ecommerce --out ./backup-$(date +%Y%m%d)
-
-# Restore database
-mongorestore --db hayaa_ecommerce ./backup-20260610/hayaa_ecommerce
-
-# Connect and explore
-mongosh
-> use hayaa_ecommerce
-> show collections
-> db.users.find().pretty()
-> db.products.countDocuments()
-```
-
----
-
-### ⚠️ Troubleshooting
-
-**Problem:** `ECONNREFUSED` when connecting
-
-```
-Solution: MongoDB isn't running. Start it:
-- Windows: net start MongoDB
-- Linux: sudo systemctl start mongod
-```
-
-**Problem:** `MongooseServerSelectionError`
-
-```
-Solution: Check your MONGO_URI in .env file.
-Make sure MongoDB is running on the correct port (27017).
-```
-
-**Problem:** `Authentication failed`
-
-```
-Solution:
-- Did you create a database user?
-- Is `authorization: enabled` in mongod.conf?
-- Are you using the correct credentials in MONGO_URI?
-```
-
-**Problem:** Can't connect from my app to VPS MongoDB
-
-```
-Solution:
-- Use SSH tunnel (recommended) instead of opening MongoDB to the internet
-- Or check firewall: sudo ufw status
-- Or check bindIp in /etc/mongod.conf
-```
-
----
-
-### 📦 Quick MongoDB Install Cheat Sheet
-
-```bash
-# ===== WINDOWS =====
-# Download installer from mongodb.com → Run MSI → Done!
-
-# ===== LINUX (Ubuntu/Debian) =====
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] http://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-sudo apt-get update
-sudo apt-get install -y mongodb-org
-sudo systemctl start mongod && sudo systemctl enable mongod
-
-# ===== MACOS =====
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
-```
-
----
-
-## �🔐 Authentication Guide
+## 🔐 Authentication Guide
 
 ### How Authentication Works
 
@@ -409,7 +271,7 @@ curl -X POST http://localhost:5000/api/auth/register \
   "success": true,
   "message": "User registered successfully",
   "data": {
-    "_id": "664a...",
+    "id": 1,                         # Note: integer, not ObjectId!
     "name": "Aisha Muhammad",
     "email": "aisha@example.com",
     "phone": "08012345678",
@@ -435,15 +297,8 @@ The platform has **three roles** with different permissions:
 
 ### Becoming a Vendor
 
-```mermaid
-sequenceDiagram
-    Customer->>API: POST /api/vendors/apply
-    API->>Database: Create vendor profile (status: pending)
-    API->>Database: Update user role to 'vendor'
-    Admin->>API: GET /api/admin/vendors
-    Admin->>API: PUT /api/admin/vendors/:id/verify
-    API->>Database: Update verificationStatus: 'verified'
-    Vendor->>API: POST /api/products (start selling!)
+```
+1. Register as customer → 2. Apply as vendor → 3. Admin approves → 4. Start selling!
 ```
 
 ---
@@ -454,7 +309,7 @@ sequenceDiagram
 
 ### 🧑‍💻 Auth Endpoints
 
-**Base:** `POST /api/auth`
+**Base:** `/api/auth`
 
 #### `POST /api/auth/register`
 
@@ -463,10 +318,10 @@ Register a new user account.
 ```json
 // Request Body
 {
-  "name": "Aisha Muhammad",        // required, min 2 chars
-  "email": "aisha@example.com",    // required, valid email
-  "password": "password123",       // required, min 6 chars
-  "phone": "08012345678"           // optional
+  "name": "Aisha Muhammad",
+  "email": "aisha@example.com",
+  "password": "password123",
+  "phone": "08012345678"
 }
 
 // Response (201 Created)
@@ -474,7 +329,7 @@ Register a new user account.
   "success": true,
   "message": "User registered successfully",
   "data": {
-    "_id": "664a...",
+    "id": 1,
     "name": "Aisha Muhammad",
     "email": "aisha@example.com",
     "phone": "08012345678",
@@ -500,13 +355,13 @@ Login with email and password.
   "success": true,
   "message": "Login successful",
   "data": {
-    "_id": "664a...",
+    "id": 1,
     "name": "Aisha Muhammad",
     "email": "aisha@example.com",
     "role": "vendor",
     "avatar": "",
-    "vendor": {                          // Only included if user is a vendor
-      "_id": "665b...",
+    "vendor": {
+      "id": 1,
       "storeName": "Aisha's Hijab Store",
       "storeSlug": "aishas-hijab-store",
       "complianceStatus": "approved",
@@ -566,9 +421,9 @@ Add a shipping address.
 }
 ```
 
-#### `DELETE /api/auth/addresses/:id` 🔒
+#### `DELETE /api/auth/addresses/:index` 🔒
 
-Delete a shipping address.
+Delete a shipping address by its array index (0, 1, 2, etc.).
 
 ---
 
@@ -603,8 +458,7 @@ Apply to become a vendor.
     "storeName": "Aisha's Hijab Store",
     "storeSlug": "aishas-hijab-store",
     "verificationStatus": "pending",
-    "complianceStatus": "pending",
-    ...
+    "complianceStatus": "pending"
   }
 }
 ```
@@ -619,12 +473,7 @@ Update your store details.
 
 #### `GET /api/vendors/dashboard` 🔒 (Vendor only)
 
-Get dashboard with:
-
-- Total / published / pending products
-- Low stock alerts
-- Recent orders
-- Total revenue
+Get dashboard with: total/published/pending products, low stock alerts, recent orders, revenue.
 
 #### `GET /api/vendors/orders` 🔒 (Vendor only)
 
@@ -636,9 +485,9 @@ Get orders containing your products.
 | `page`      | `1, 2, 3...` (default: 1)                                       | Pagination            |
 | `limit`     | `10, 20, 50...` (default: 20)                                   | Items per page        |
 
-#### `PUT /api/vendors/orders/:orderId/items/:itemId` 🔒 (Vendor only)
+#### `PUT /api/vendors/orders/:orderId/items/:itemIndex` 🔒 (Vendor only)
 
-Update the status of a specific item in an order.
+Update the status of a specific item (by array index).
 
 ```json
 // Request Body
@@ -651,11 +500,11 @@ Update the status of a specific item in an order.
 
 View a public vendor store page with all their published products.
 
-| Query Param | Values                                                     | Description    |
-| ----------- | ---------------------------------------------------------- | -------------- |
-| `page`      | default: 1                                                 | Pagination     |
-| `limit`     | default: 20                                                | Items per page |
-| `sort`      | `-createdAt` (newest), `price`, `-price`, `-averageRating` | Sort order     |
+| Query Param | Values                                            | Description    |
+| ----------- | ------------------------------------------------- | -------------- |
+| `page`      | default: 1                                        | Pagination     |
+| `limit`     | default: 20                                       | Items per page |
+| `sort`      | `-createdAt`, `price`, `-price`, `-averageRating` | Sort order     |
 
 ---
 
@@ -667,18 +516,18 @@ View a public vendor store page with all their published products.
 
 Get all published products with powerful filtering.
 
-| Query Param  | Example                                           | Description                      |
-| ------------ | ------------------------------------------------- | -------------------------------- |
-| `page`       | `1`                                               | Page number                      |
-| `limit`      | `20`                                              | Items per page                   |
-| `sort`       | `-createdAt`, `price`, `-price`, `-averageRating` | Sort order                       |
-| `category`   | `665b...`                                         | Filter by category ID            |
-| `minPrice`   | `500`                                             | Minimum price                    |
-| `maxPrice`   | `5000`                                            | Maximum price                    |
-| `search`     | `hijab`                                           | Text search (name & description) |
-| `isHalal`    | `true`                                            | Filter by Halal certification    |
-| `islamicTag` | `Eid`, `Ramadan`, `Modest`                        | Filter by Islamic tag            |
-| `vendor`     | `665b...`                                         | Filter by vendor ID              |
+| Query Param  | Example                                           | Description                   |
+| ------------ | ------------------------------------------------- | ----------------------------- |
+| `page`       | `1`                                               | Page number                   |
+| `limit`      | `20`                                              | Items per page                |
+| `sort`       | `-createdAt`, `price`, `-price`, `-averageRating` | Sort order                    |
+| `category`   | `1`                                               | Filter by category ID         |
+| `minPrice`   | `500`                                             | Minimum price                 |
+| `maxPrice`   | `5000`                                            | Maximum price                 |
+| `search`     | `hijab`                                           | Search by name & description  |
+| `isHalal`    | `true`                                            | Filter by Halal certification |
+| `islamicTag` | `Eid`, `Ramadan`, `Modest`                        | Filter by Islamic tag         |
+| `vendor`     | `1`                                               | Filter by vendor ID           |
 
 ```json
 // Response (200 OK)
@@ -687,24 +536,23 @@ Get all published products with powerful filtering.
   "count": 15,
   "data": [
     {
-      "_id": "664a...",
+      "id": 1,
       "name": "Premium Silk Hijab",
       "slug": "premium-silk-hijab",
       "price": 2500,
       "comparePrice": 3000,
-      "discount": 17, // Auto-calculated
+      "discount": 17,
       "images": [{ "url": "...", "isPrimary": true }],
       "isHalal": true,
       "islamicTags": ["Modest", "Eid"],
       "averageRating": 4.5,
-      "category": { "_id": "...", "name": "Hijabs", "slug": "hijabs" },
+      "category": { "id": 1, "name": "Hijabs", "slug": "hijabs" },
       "vendor": {
-        "_id": "...",
+        "id": 1,
         "storeName": "Aisha's Hijab Store",
         "storeSlug": "aishas-hijab-store"
       }
     }
-    // ... more products
   ],
   "pagination": {
     "page": 1,
@@ -721,7 +569,6 @@ Get a single product by its URL-friendly slug. Includes:
 
 - Full product details
 - Vendor info
-- Approved reviews with user details
 - Related products (same category)
 
 #### `POST /api/products` 🔒 (Vendor only)
@@ -737,18 +584,12 @@ Create a new product. Vendor must be **verified**.
   "price": 2500,
   "comparePrice": 3000,
   "stock": 50,
-  "category": "665b...",           // Category ObjectId
+  "category": 1,
   "images": [
-    { "url": "/uploads/products/abc.jpg", "alt": "Hijab front view", "isPrimary": true },
-    { "url": "/uploads/products/def.jpg", "alt": "Hijab back view" }
+    { "url": "/uploads/products/abc.jpg", "alt": "Hijab front view", "isPrimary": true }
   ],
   "isHalal": true,
   "islamicTags": ["Modest", "Eid", "Ramadan"],
-  "attributes": [
-    { "name": "Size", "value": "One Size", "price": 0, "stock": 50 },
-    { "name": "Color", "value": "Black", "price": 0, "stock": 20 },
-    { "name": "Color", "value": "White", "price": 0, "stock": 30 }
-  ],
   "weight": 0.2,
   "isFreeShipping": false,
   "shippingPrice": 500
@@ -759,13 +600,13 @@ Create a new product. Vendor must be **verified**.
   "success": true,
   "message": "Product created successfully. Awaiting admin approval.",
   "data": {
-    "status": "pending",   // Needs admin approval!
+    "status": "pending",
     ...
   }
 }
 ```
 
-> **⚠️ Important:** New products are created with `status: "pending"` and must be approved by an admin before they appear publicly.
+> **⚠️ Important:** New products are created with `status: "pending"` and must be approved by an admin.
 
 #### `GET /api/products/mine/all` 🔒 (Vendor only)
 
@@ -791,46 +632,14 @@ Delete your product.
 
 **Base:** `/api/categories`
 
-Categories support parent/child hierarchy (subcategories).
-
 #### `GET /api/categories` 🌍 (Public)
 
-Get all active categories.
+Get all active categories with subcategories.
 
 | Query Param   | Values                                                | Description              |
 | ------------- | ----------------------------------------------------- | ------------------------ |
 | `islamicType` | `Clothing_&_Modest_Fashion`, `Prayer_&_Worship`, etc. | Filter by Islamic type   |
 | `isFeatured`  | `true`, `false`                                       | Featured categories only |
-
-```json
-// Response (200 OK)
-{
-  "success": true,
-  "count": 12,
-  "data": {
-    "all": [
-      // All categories with subcategories populated
-    ],
-    "parents": [
-      // Only top-level categories (no parent)
-    ]
-  }
-}
-```
-
-**Available Islamic Types:**
-
-- `Clothing_&_Modest_Fashion`
-- `Prayer_&_Worship`
-- `Quran_&_Islamic_Knowledge`
-- `Halal_Food_&_Beverages`
-- `Home_&_Lifestyle`
-- `Personal_Care_&_Fragrance`
-- `Gifts_&_Occasions`
-- `Digital_&_Media`
-- `Children_&_Family`
-- `Hajj_&_Umrah`
-- `Other`
 
 #### `GET /api/categories/:slug` 🌍 (Public)
 
@@ -846,7 +655,7 @@ Create a category.
   "name": "Hijabs & Headscarves",
   "description": "Beautiful Islamic head coverings",
   "icon": "🧕",
-  "parent": null, // ObjectId of parent category, or null
+  "parent": null,
   "islamicType": "Clothing_&_Modest_Fashion",
   "sortOrder": 1
 }
@@ -877,26 +686,22 @@ Get your current cart with all items.
 {
   "success": true,
   "data": {
-    "_id": "665b...",
-    "user": "664a...",
+    "id": 1,
+    "userId": 1,
     "items": [
       {
-        "_id": "item123",
-        "product": {
-          "_id": "664a...",
+        "product": 1,
+        "quantity": 2,
+        "price": 2500,
+        "total": 5000,
+        "productDetails": {
+          "id": 1,
           "name": "Premium Silk Hijab",
           "slug": "premium-silk-hijab",
           "price": 2500,
           "images": [{ "url": "...", "isPrimary": true }],
-          "stock": 50,
-          "vendor": {
-            "storeName": "Aisha's Hijab Store",
-            "storeSlug": "aishas-hijab-store"
-          }
-        },
-        "quantity": 2,
-        "price": 2500,
-        "total": 5000
+          "vendor": { "storeName": "Aisha's Hijab Store" }
+        }
       }
     ],
     "subtotal": 5000,
@@ -909,30 +714,23 @@ Get your current cart with all items.
 
 #### `POST /api/cart`
 
-Add an item to your cart. If the item already exists, it increases the quantity.
+Add an item to your cart.
 
 ```json
 // Request Body
 {
-  "productId": "664a...",          // Required: Product ObjectId
-  "quantity": 2,                   // Optional: Default 1
-  "variant": {                     // Optional: For products with variants
+  "productId": 1,
+  "quantity": 2,
+  "variant": {
     "name": "Color",
     "value": "Black"
   }
 }
-
-// Response (200 OK)
-{
-  "success": true,
-  "message": "Item added to cart",
-  "data": { /* full cart */ }
-}
 ```
 
-#### `PUT /api/cart/:itemId`
+#### `PUT /api/cart/:itemIndex`
 
-Update the quantity of a cart item. Set `quantity: 0` to remove.
+Update the quantity of a cart item by array index.
 
 ```json
 // Request Body
@@ -941,9 +739,9 @@ Update the quantity of a cart item. Set `quantity: 0` to remove.
 }
 ```
 
-#### `DELETE /api/cart/:itemId`
+#### `DELETE /api/cart/:itemIndex`
 
-Remove a specific item from cart.
+Remove a specific item from cart by array index.
 
 #### `DELETE /api/cart/clear`
 
@@ -977,60 +775,35 @@ Create an order from your cart. This will:
     "zipCode": "700001",
     "country": "Nigeria"
   },
-  "paymentMethod": "pay_on_delivery",   // Options: pay_on_delivery, card, bank_transfer, paystack, flutterwave
+  "paymentMethod": "pay_on_delivery",
   "notes": "Please deliver between 2-5pm"
-}
-
-// Response (201 Created)
-{
-  "success": true,
-  "message": "Order placed successfully",
-  "data": {
-    "_id": "666c...",
-    "orderNumber": "HAY-K3M2XZ7",     // Save this for tracking!
-    "user": { "_id": "664a...", "name": "Aisha Muhammad", "email": "aisha@example.com" },
-    "items": [
-      {
-        "product": { "_id": "664a...", "name": "Premium Silk Hijab", "price": 2500 },
-        "quantity": 2,
-        "total": 5000,
-        "status": "pending"
-      }
-    ],
-    "subtotal": 5000,
-    "total": 5000,
-    "status": "pending",
-    "paymentMethod": "pay_on_delivery",
-    "paymentStatus": "pending",
-    "createdAt": "2026-06-10T..."
-  }
 }
 ```
 
 #### `GET /api/orders`
 
-Get all your orders.
+Get your orders with pagination.
 
 | Query Param | Values                                                          | Description    |
 | ----------- | --------------------------------------------------------------- | -------------- |
 | `status`    | `pending, confirmed, processing, shipped, delivered, cancelled` | Filter         |
-| `page`      | `1`                                                             | Pagination     |
-| `limit`     | `20`                                                            | Items per page |
+| `page`      | default: 1                                                      | Pagination     |
+| `limit`     | default: 20                                                     | Items per page |
 
 #### `GET /api/orders/:id`
 
-Get a single order by its ID.
+Get a single order by ID.
 
 #### `GET /api/orders/number/:orderNumber`
 
-Get an order by its human-readable order number (e.g., `HAY-K3M2XZ7`).
+Get an order by its order number (e.g., `HAY-K3M2XZ7`).
 
 #### `PUT /api/orders/:id/cancel`
 
-Cancel an order (only if status is `pending` or `confirmed`). Stock will be restored.
+Cancel your order (only if status is `pending` or `confirmed`).
 
 ```json
-// Request Body (Optional)
+// Request Body
 {
   "reason": "Changed my mind"
 }
@@ -1044,298 +817,199 @@ Cancel an order (only if status is `pending` or `confirmed`). Stock will be rest
 
 #### `POST /api/reviews` 🔒
 
-Create a review for a product you purchased.
+Submit a review for a product you've purchased.
 
 ```json
 // Request Body
 {
-  "product": "664a...",        // Required: Product ObjectId
-  "rating": 5,                 // Required: 1-5
-  "title": "Beautiful quality", // Optional
-  "comment": "The hijab is amazing, great material..."  // Optional
-}
-
-// Response (201 Created)
-{
-  "success": true,
-  "message": "Review submitted. Awaiting approval.",
-  "data": {
-    "isVerifiedPurchase": true,   // Auto-detected if you bought the product
-    "isApproved": false,           // Needs admin approval
-    ...
-  }
+  "product": 1,
+  "rating": 4,
+  "title": "Great quality",
+  "comment": "The hijab material is very soft and comfortable."
 }
 ```
-
-> ⚠️ You can only review a product **once**. One review per product per user.
 
 #### `GET /api/reviews/product/:productId` 🌍 (Public)
 
-Get all approved reviews for a product.
-
-```json
-// Response (200 OK)
-{
-  "success": true,
-  "data": [
-    {
-      "_id": "667d...",
-      "user": { "_id": "664a...", "name": "Fatima Umar", "avatar": "" },
-      "rating": 5,
-      "title": "Beautiful quality",
-      "comment": "Amazing material...",
-      "isVerifiedPurchase": true,
-      "createdAt": "2026-06-10T..."
-    }
-  ],
-  "ratingDistribution": [
-    { "_id": 5, "count": 12 },
-    { "_id": 4, "count": 3 },
-    { "_id": 3, "count": 1 }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 16,
-    "pages": 1
-  }
-}
-```
+Get approved reviews for a product with rating distribution.
 
 ---
 
-### 🛡️ Admin Endpoints
+### 👑 Admin Endpoints
 
-**Base:** `/api/admin` (All routes require **admin role** 🔒🔒)
+**Base:** `/api/admin` (All routes require admin role 🔒)
 
 #### `GET /api/admin/dashboard`
 
-Get full platform statistics:
+Get platform statistics.
 
-- Total users, customers, vendors
-- Total products, published, pending
-- Total orders & revenue
-- Pending vendor applications
+#### Vendor Management
 
-#### 👥 Vendor Management
+| Method | Endpoint                          | Description                                         |
+| ------ | --------------------------------- | --------------------------------------------------- |
+| `GET`  | `/api/admin/vendors`              | List all vendors (filter: `status`, `verification`) |
+| `PUT`  | `/api/admin/vendors/:id/verify`   | Approve/reject vendor                               |
+| `PUT`  | `/api/admin/vendors/:id/status`   | Suspend/activate vendor                             |
+| `PUT`  | `/api/admin/vendors/:id/featured` | Toggle featured vendor                              |
 
-| Method | Endpoint                                                  | Description               |
-| ------ | --------------------------------------------------------- | ------------------------- |
-| `GET`  | `/api/admin/vendors?status=pending&verification=verified` | List vendors with filters |
-| `PUT`  | `/api/admin/vendors/:id/verify`                           | Approve/reject vendor     |
-| `PUT`  | `/api/admin/vendors/:id/status`                           | Suspend/activate vendor   |
-| `PUT`  | `/api/admin/vendors/:id/featured`                         | Toggle featured status    |
+#### Product Management
 
-**Verify a vendor:**
+| Method | Endpoint                           | Description                          |
+| ------ | ---------------------------------- | ------------------------------------ |
+| `GET`  | `/api/admin/products`              | List all products (filter: `status`) |
+| `PUT`  | `/api/admin/products/:id/status`   | Approve/reject product               |
+| `PUT`  | `/api/admin/products/:id/featured` | Toggle featured product              |
 
-```json
-// PUT /api/admin/vendors/:id/verify
-{
-  "verificationStatus": "verified", // verified | pending | rejected
-  "complianceStatus": "approved", // approved | pending | rejected | suspended
-  "commissionRate": 5 // Optional: Override commission %
-}
-```
+#### Order Management
 
-#### 📦 Product Management
+| Method | Endpoint                       | Description                        |
+| ------ | ------------------------------ | ---------------------------------- |
+| `GET`  | `/api/admin/orders`            | List all orders (filter: `status`) |
+| `PUT`  | `/api/admin/orders/:id/status` | Update order status + tracking     |
 
-| Method | Endpoint                             | Description            |
-| ------ | ------------------------------------ | ---------------------- |
-| `GET`  | `/api/admin/products?status=pending` | List all products      |
-| `PUT`  | `/api/admin/products/:id/status`     | Approve/reject product |
-| `PUT`  | `/api/admin/products/:id/featured`   | Toggle featured        |
+#### User Management
 
-**Approve a product:**
+| Method | Endpoint                      | Description                     |
+| ------ | ----------------------------- | ------------------------------- |
+| `GET`  | `/api/admin/users`            | List all users (filter: `role`) |
+| `PUT`  | `/api/admin/users/:id/status` | Activate/deactivate user        |
 
-```json
-// PUT /api/admin/products/:id/status
-{
-  "status": "published", // published | rejected | archived
-  "adminNotes": "Good quality product, approved"
-}
-```
+#### Review Management
 
-#### 📋 Order Management
-
-| Method | Endpoint                       | Description         |
-| ------ | ------------------------------ | ------------------- |
-| `GET`  | `/api/admin/orders`            | List all orders     |
-| `PUT`  | `/api/admin/orders/:id/status` | Update order status |
-
-**Update order:**
-
-```json
-// PUT /api/admin/orders/:id/status
-{
-  "status": "shipped",
-  "trackingNumber": "TRACK123456",
-  "adminNotes": "Shipped via DHL"
-}
-```
-
-#### 👤 User Management
-
-| Method | Endpoint                       | Description                 |
-| ------ | ------------------------------ | --------------------------- |
-| `GET`  | `/api/admin/users?role=vendor` | List users (filter by role) |
-| `PUT`  | `/api/admin/users/:id/status`  | Activate/deactivate user    |
-
-#### ⭐ Review Management
-
-| Method | Endpoint                        | Description           |
-| ------ | ------------------------------- | --------------------- |
-| `GET`  | `/api/admin/reviews`            | List all reviews      |
-| `PUT`  | `/api/admin/reviews/:id/status` | Approve/reject review |
-
-**Approve a review:**
-
-```json
-// PUT /api/admin/reviews/:id/status
-{
-  "isApproved": true,
-  "adminReply": "Thank you for your review!"
-}
-```
+| Method | Endpoint                        | Description                             |
+| ------ | ------------------------------- | --------------------------------------- |
+| `GET`  | `/api/admin/reviews`            | List all reviews (filter: `isApproved`) |
+| `PUT`  | `/api/admin/reviews/:id/status` | Approve/reject review + admin reply     |
 
 ---
 
 ## ⚠️ Error Handling
 
-All errors follow a consistent format:
-
 ```json
+// Validation Error (400)
 {
   "success": false,
-  "message": "Human-readable error message",
+  "message": "Validation failed",
   "errors": [
-    // Only for validation errors
-    { "field": "email", "message": "Please provide a valid email" }
-  ],
-  "stack": "..." // Only in development mode
+    { "field": "email", "message": "Email must be valid" }
+  ]
 }
-```
 
-### Common HTTP Status Codes
-
-| Code  | Meaning         | When                                             |
-| ----- | --------------- | ------------------------------------------------ |
-| `200` | ✅ Success      | GET, PUT requests succeeded                      |
-| `201` | ✅ Created      | POST request succeeded (resource created)        |
-| `400` | ❌ Bad Request  | Invalid input, validation error, duplicate entry |
-| `401` | ❌ Unauthorized | No token or invalid token                        |
-| `403` | ❌ Forbidden    | Wrong role (e.g., customer trying vendor routes) |
-| `404` | ❌ Not Found    | Resource doesn't exist                           |
-| `500` | ❌ Server Error | Something went wrong on the server               |
-
-### Common Error Messages
-
-```json
-// Missing authentication
-{ "success": false, "message": "Not authorized to access this route. No token provided." }
-
-// Wrong role
-{ "success": false, "message": "Role 'customer' is not authorized to access this route." }
-
-// Validation
-{ "success": false, "message": "Validation failed", "errors": [{ "field": "name", "message": "Please provide a name" }] }
-
-// Duplicate
-{ "success": false, "message": "Duplicate value for email. This email already exists." }
-
-// Not found
-{ "success": false, "message": "Product not found" }
-```
-
----
-
-## 🔄 Typical User Flows
-
-### 🛍️ Customer Flow
-
-```
-Register → Browse products → Add to cart → Place order → Track order → Review products
-```
-
-### 🏪 Vendor Flow
-
-```
-Register → Apply as vendor → Wait for admin approval
-→ Create products → Wait for product approval
-→ Fulfill orders → Get paid → Manage dashboard
-```
-
-### 🛡️ Admin Flow
-
-```
-Login → Dashboard → Approve/reject vendors → Approve products
-→ Manage categories → Monitor orders → Manage users & reviews
-```
-
----
-
-## 🔧 Utility Information
-
-### Pagination
-
-All list endpoints support pagination with this response format:
-
-```json
+// Not Found (404)
 {
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 85,
-    "pages": 5
-  }
+  "success": false,
+  "message": "Product not found"
+}
+
+// Unauthorized (401)
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+
+// Forbidden (403)
+{
+  "success": false,
+  "message": "Role 'customer' is not authorized to access this route"
+}
+
+// Server Error (500) - Only shows stack in development
+{
+  "success": false,
+  "message": "Something went wrong",
+  "stack": "Error: ..." // Only in NODE_ENV=development
 }
 ```
 
-### Islamic Tags Available
+---
 
-| Tag              | Usage                           |
-| ---------------- | ------------------------------- |
-| `Halal`          | Halal-certified products        |
-| `Modest`         | Modest clothing and accessories |
-| `Prayer_Related` | Prayer mats, tasbih, etc.       |
-| `Quranic`        | Quran and Islamic books         |
-| `Sunnah`         | Sunnah-recommended items        |
-| `Islamic_Gift`   | Gifts for Islamic occasions     |
-| `Eid`            | Eid-related products            |
-| `Ramadan`        | Ramadan specials                |
-| `Hajj`           | Hajj essentials                 |
-| `Umrah`          | Umrah necessities               |
-| `Charity`        | Charity/donation products       |
-| `Family`         | Family-oriented items           |
+## 📊 Database Models Overview
 
-### Vendor Specialties Available
+### Entity Relationship Diagram (ERD)
 
-| Specialty            | Description                       |
-| -------------------- | --------------------------------- |
-| `Islamic_Clothing`   | Hijabs, abayas, thobes, kufis     |
-| `Prayer_Items`       | Prayer mats, tasbih, Quran stands |
-| `Quran_&_Books`      | Quran copies, Islamic literature  |
-| `Halal_Food`         | Halal groceries, snacks           |
-| `Islamic_Home_Decor` | Islamic wall art, decor           |
-| `Personal_Care`      | Halal perfumes, skincare          |
-| `Gifts_&_Souvenirs`  | Islamic gifts                     |
-| `Digital_Products`   | eBooks, courses                   |
-| `Other`              | Other Islamic products            |
+```
+Users ──┬── Vendors  (1-to-1: user has one vendor)
+        ├── Carts    (1-to-1: user has one cart)
+        ├── Orders   (1-to-many: user has many orders)
+        └── Reviews  (1-to-many: user writes many reviews)
+
+Vendors ── Products (1-to-many: vendor sells many products)
+        └── Reviews  (vendor receives many reviews)
+
+Categories ─┬── Products (parent category has many products)
+             └── Categories (self-referencing: category has subcategories)
+```
+
+### 7 Database Tables
+
+| Table          | Key Fields                                                             | Description                       |
+| -------------- | ---------------------------------------------------------------------- | --------------------------------- |
+| **Users**      | id, name, email, password, role, isActive                              | Customers, vendors & admins       |
+| **Vendors**    | id, userId, storeName, storeSlug, complianceStatus, verificationStatus | Store profiles                    |
+| **Categories** | id, name, slug, parentId, islamicType                                  | Product categories with hierarchy |
+| **Products**   | id, vendorId, name, slug, price, stock, categoryId, status             | Products for sale                 |
+| **Carts**      | id, userId, items (JSON), subtotal, total                              | Shopping carts                    |
+| **Orders**     | id, userId, orderNumber, items (JSON), status, total                   | Customer orders                   |
+| **Reviews**    | id, userId, productId, rating, isApproved                              | Product reviews                   |
 
 ---
 
-## 💡 Tips for Frontend Developers
+## 🚀 VPS Deployment
 
-1. **Always check `success`** - It's `true` or `false`
-2. **Store the token** - In localStorage or secure httpOnly cookies
-3. **Token expiry** - Default is 7 days. When you get a 401, redirect to login
-4. **Pagination** - Use the `pagination` object for infinite scroll / page buttons
-5. **Image URLs** - Product images are stored as relative paths like `/uploads/products/abc.jpg`. Prepend with the base URL `http://localhost:5000`
-6. **Vendor verification** - Check `vendor.verificationStatus === 'verified'` before showing "Add Product" button
-7. **Stock management** - Disable "Add to Cart" when `product.stock === 0`
+```bash
+# 1. SSH into your VPS
+ssh your_user@your_vps_ip
+
+# 2. Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install nodejs -y
+
+# 3. Install MySQL
+sudo apt install mysql-server -y
+
+# 4. Clone & setup project
+git clone <repo-url>
+cd hayaa-ecommerce-backend-node
+npm install
+cp .env.example .env
+nano .env   # Set your DB credentials & JWT secret
+
+# 5. Create database & run migrations
+# Create DB in MySQL first, then:
+npm run migrate
+
+# 6. Install PM2 to keep app running
+sudo npm install -g pm2
+pm2 start server.js --name hayaa-api
+pm2 save
+pm2 startup   # Auto-start on reboot
+
+# 7. (Optional) Set up Nginx reverse proxy
+# See the guide in your .env.example notes
+```
 
 ---
 
-<div align="center">
-  <p>Built with ❤️ for the Muslim Ummah</p>
-  <p>📍 Nigeria</p>
-</div>
+## 📝 Common Commands Cheatsheet
+
+```bash
+npm install          # Install dependencies
+npm start            # Start production server
+npm run dev          # Start dev server (auto-reload)
+npm run migrate      # Run database migrations
+npm run migrate:undo # Rollback last migration
+npm run migrate:create -- add_coupons_table  # Create new migration
+```
+
+---
+
+## 🛠️ Tech Stack
+
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** MySQL 8+
+- **ORM:** Sequelize 6
+- **Authentication:** JWT (JSON Web Tokens)
+- **File Uploads:** Multer
+- **Password Hashing:** bcryptjs
+- **Migrations:** Sequelize CLI
